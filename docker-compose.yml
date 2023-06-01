@@ -1,0 +1,80 @@
+version: '3'
+networks:
+  app-network: 
+    driver: bridge
+services:
+# cấu hình NGINX
+  nginx:
+    image: 'nginx:stable-alpine'
+    container_name: c-nginx
+    ports:
+      - 8989:80
+      - 443:443
+    volumes:
+      -  './src:/var/www/html'
+      -  './nginx-default.conf:/etc/nginx/conf.d/default.conf'
+    depends_on:
+      - php
+    networks:
+      - app-network
+# cấu hình mysql
+  db:
+    image: 'mysql:5.7.22'
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: app_db
+      MYSQL_ROOT_PASSWORD: secret
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./data:/var/lib/mysql
+    networks:
+      - app-network
+# cấu hình php
+  php:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: c-php
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./src:/var/www/html
+    depends_on:
+      - db
+      # - redis
+    ports:
+      - 9000:9000
+    environment:
+      SERVICE_NAME: app
+      SERVICE_TAGS: dev
+    networks:
+      - app-network
+  # composer:
+  #   image: 'composer:latest'
+  #   container_name: c-composer
+  #   volumes:
+  #     -  ./src:/var/www/html
+  #   working_dir: /var/www/html
+  #   networks:
+  #     - app-network
+  # npm:
+  #   image: 'node:13.7'
+  #   container_name: c-npm
+  #   volumes:
+  #     - ./src:/var/www/html
+  #   working_dir: /var/www/html
+  #   entrypoint: 
+  #     - npm
+  # redis:
+  #   image: redis:5.0.6-alpine
+  #   ports:
+  #     - '6382:6379'
+  # adminer:
+  #   image: adminer:4.2.5-standalone
+  #   ports:
+  #     - 8080:8080
